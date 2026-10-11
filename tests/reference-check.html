@@ -1,0 +1,38 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>模板像素回归检查</title>
+<style>@font-face{font-family:ReferenceRoboto;src:url('/fonts/Roboto.ttf');font-weight:100 900}body{font:14px system-ui;margin:30px}table{border-collapse:collapse}td,th{padding:8px;border:1px solid #ddd}.ok{color:green}</style>
+<h1>模板像素回归检查</h1><p id="status">正在检查</p><table><thead><tr><th>模板</th><th>尺寸</th><th>默认像素差异</th><th>修改区域外差异</th><th>结果</th></tr></thead><tbody id="results"></tbody></table>
+<script type="module">
+import {templates} from '/src/reference-data.mjs';
+import {renderReference,loadImage} from '/src/reference-renderer.mjs';
+let failures=0;
+for(const t of templates){
+ const row=document.createElement('tr');document.querySelector('#results').append(row);
+ try{
+  const canvas=document.createElement('canvas'),expected=document.createElement('canvas');expected.width=t.width;expected.height=t.height;
+  expected.getContext('2d').drawImage(await loadImage(t.src),0,0);
+  const original=expected.getContext('2d').getImageData(0,0,t.width,t.height).data;
+  const values=Object.fromEntries(Object.entries(t.fields).map(([k,f])=>[k,f.value]));
+  await renderReference(canvas,t,values);
+  const first=canvas.getContext('2d').getImageData(0,0,t.width,t.height).data;
+  let difference=0;for(let p=0;p<first.length;p++)if(first[p]!==original[p])difference++;
+  const edited={...values};for(const [key,f] of Object.entries(t.fields)){if(f.type==='image')continue;edited[key]=f.type==='amount'?'1234':f.type==='battery'?'80':f.type==='datetime-local'?'2026-10-11T12:34':key==='time'?'12:34':key.includes('Initials')?'TS':['started','transferred','depositing'].includes(key)?'':'Test '+key;}
+  await renderReference(canvas,t,edited);
+  const after=canvas.getContext('2d').getImageData(0,0,t.width,t.height).data;
+  const mask=new Uint8Array(t.width*t.height);
+  for(const r of t.regions)for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++)mask[y*t.width+x]=1;
+  let outside=0;for(let p=0;p<mask.length;p++)if(!mask[p])for(let ch=0;ch<4;ch++)if(after[p*4+ch]!==original[p*4+ch])outside++;
+  let phoneOutside=0;
+  for(const [topStyle,bottomStyle] of [['paytm-process-white','keys'],['paytm-process-gray','gesture'],['freecharge-details','gesture']]){
+   await renderReference(canvas,t,{...values,topStyle,bottomStyle});
+   const styled=canvas.getContext('2d').getImageData(0,0,t.width,t.height).data;
+   const bottom=t.id==='freecharge-details'?72:t.id==='paytm-process-gray'?60:36;
+   for(let p=55*t.width*4;p<(t.height-bottom)*t.width*4;p++)if(styled[p]!==original[p])phoneOutside++;
+  }
+  const ok=!difference&&!outside&&!phoneOutside&&canvas.width===t.width&&canvas.height===1280;
+  if(!ok)failures++;
+  for(const text of [t.label,`${canvas.width}×${canvas.height}`,difference,outside,ok?'通过':'失败']){const td=document.createElement('td');td.textContent=text;row.append(td);}
+ }catch(error){failures++;row.textContent=t.id+': '+error.message;}
+}
+document.querySelector('#status').textContent=failures?`${failures} 项失败`:'12 / 12 通过：默认输出与示例逐像素一致；修改没有影响字段区域之外的像素；所有输出高度保持 1280。';
+document.querySelector('#status').dataset.result=failures?'fail':'pass';
+</script></html>
