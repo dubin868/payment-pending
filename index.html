@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>待处理付款记录</title>
+<style>
+@font-face{font-family:ReferenceRoboto;src:url('/fonts/Roboto.ttf') format('truetype');font-weight:100 900;font-display:swap}
+:root{font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;color:#253041;background:#f3f5f8;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0;min-width:320px}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:wait;opacity:.55}[hidden]{display:none!important}
+header{background:#fff;border-bottom:1px solid #dfe4eb;padding:22px max(24px,calc((100vw - 1440px)/2));display:flex;align-items:center;justify-content:space-between;gap:24px}h1{font-size:21px;margin:0 0 6px}header p{margin:0;color:#768091;font-size:13px}.providers{display:flex;gap:8px}.providers button{background:#fff;border:1px solid #dde2e9;border-radius:10px;padding:12px 16px;color:#647084}.providers button[aria-pressed=true]{background:#fff4e5;border-color:#e9a346;color:#784511}
+main{max-width:1440px;margin:24px auto;padding:0 24px;display:grid;grid-template-columns:minmax(320px,400px) minmax(0,1fr);gap:24px;align-items:start}.panel{background:#fff;border:1px solid #e0e5ec;border-radius:16px;overflow:hidden}.panel-title{padding:20px 22px;border-bottom:1px solid #edf0f3}h2{font-size:17px;margin:0 0 8px}.muted{font-size:12px;color:#738092;line-height:1.7;margin:0}.selector{padding:20px 22px;border-bottom:1px solid #edf0f3}.field{display:flex;flex-direction:column;gap:7px;min-width:0}.field label{font-size:13px;font-weight:600;color:#455265}input,select,textarea{width:100%;border:1px solid #d9e0e8;border-radius:8px;padding:10px 11px;background:#fff;color:#273340;min-height:42px}textarea{resize:vertical;min-height:76px}input:focus,select:focus,textarea:focus{outline:2px solid #e8b260;outline-offset:1px}fieldset{border:0;margin:0;padding:20px 22px;border-bottom:1px solid #edf0f3}legend{float:left;width:100%;font-weight:700;font-size:13px;margin:0 0 16px;color:#69768a}fieldset .fields{clear:both;display:grid;gap:17px}fieldset legend+.fields{padding-top:2px}.field .original{font-size:11px;color:#8590a0;overflow-wrap:anywhere}.file-row{display:flex;align-items:center;gap:6px}.file-row input{min-width:0;font-size:12px}.small-button{border:1px solid #d9e0e8;border-radius:8px;background:#fff;padding:8px;color:#536177;font-size:12px;white-space:nowrap}.actions{padding:18px 22px;display:flex;gap:8px;flex-wrap:wrap}.actions button{border:1px solid #d9e0e8;border-radius:9px;background:#fff;color:#40516a;padding:10px 12px;font-size:13px}.actions #download{width:100%;background:#253246;color:#fff;border-color:#253246;padding:13px;font-weight:600}.status{padding:0 22px 20px;font-size:12px;line-height:1.7;color:#627187;margin:0;overflow-wrap:anywhere}.status.error{color:#b13b32}
+.preview-toolbar{padding:17px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #edf0f3}.preview-toolbar h2{margin:0}.compare-toggle{display:flex;gap:7px;align-items:center;white-space:nowrap;font-size:12px;color:#66758a}.compare-toggle input{width:auto;min-height:0}.previews{padding:24px;display:grid;grid-template-columns:minmax(0,1fr);gap:18px;background:#e9edf2}.previews.compare{grid-template-columns:repeat(2,minmax(0,1fr))}.screen{min-width:0;margin:0;text-align:center}.screen figcaption{font-size:12px;color:#627187;margin-bottom:10px}.screen canvas,.screen img{display:block;width:100%;max-width:390px;height:auto;margin:auto;background:#fff;box-shadow:0 6px 20px #1c29351c}.preview-footer{padding:14px 20px;font-size:12px;color:#69778b;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media(max-width:850px){header{align-items:flex-start;flex-direction:column;padding:18px}main{grid-template-columns:1fr;padding:0 14px;margin:14px auto}.providers{width:100%}.providers button{flex:1;padding:10px}.previews{padding:14px}.previews.compare{gap:10px}.preview-toolbar{padding:16px}.panel-title{padding:18px}}
+</style>
+</head>
+<body>
+<header><nav class="providers" aria-label="选择付款平台"><button type="button" data-provider="freecharge" aria-pressed="true">Freecharge</button><button type="button" data-provider="paytm" aria-pressed="false">Paytm</button><button type="button" data-provider="mobikwik" aria-pressed="false">MobiKwik</button></nav></header>
+<main>
+<section class="panel" aria-label="编辑区">
+<div class="panel-title"><h2>编辑内容</h2><p class="muted">选择对应的页面及截图位置。每张示例单独保存编辑内容。</p></div>
+<div class="selector field"><label for="template">示例页面／截图位置</label><select id="template"></select><p class="muted" id="templateNote">固定背景、图标和排版沿用所选示例。</p></div>
+<form id="editor"></form>
+<fieldset><legend>手机界面样式</legend><div class="fields">
+<div class="field"><label for="topStyle">顶部状态栏</label><select id="topStyle"><option value="original">当前示例原样</option><option value="paytm-process-white">真实安卓 · 白色状态栏</option><option value="paytm-process-gray">真实安卓 · 浅灰状态栏</option><option value="freecharge-details">真实安卓 · 含 AM／PM</option></select></div>
+<div class="field"><label for="bottomStyle">底部导航栏</label><select id="bottomStyle"><option value="original">示例原样</option><option value="keys">安卓三键</option><option value="gesture">手势横条（安卓／苹果）</option></select></div>
+</div></fieldset>
+<div class="actions"><button id="download" type="button" disabled>下载 PNG 图片</button></div>
+<p id="status" class="status" role="status" aria-live="polite">正在加载示例…</p>
+</section>
+<section class="panel" aria-label="图片预览">
+<div class="preview-toolbar"><h2>输出预览</h2><label class="compare-toggle"><input type="checkbox" id="compare">显示原图对照</label></div>
+<div id="previews" class="previews"><figure class="screen"><figcaption>编辑后的输出</figcaption><canvas id="preview" width="576" height="1280" role="img" aria-label="待处理付款图片预览"></canvas></figure><figure class="screen" id="originalFigure" hidden><figcaption>所选示例原图</figcaption><img id="original" alt="所选示例原图"></figure></div>
+<div class="preview-footer"><span id="dimensions">固定屏幕尺寸</span><span id="renderState">正在加载</span></div>
+</section>
+</main>
+<script>
+window.showStartupError=function(message){
+  document.getElementById('status').textContent=message;
+  document.getElementById('status').classList.add('error');
+  document.getElementById('renderState').textContent='加载失败';
+};
+if(location.protocol==='file:')window.showStartupError('请关闭此页，双击项目文件夹里的“启动工具.cmd”。直接打开 HTML 无法加载编辑程序。');
+</script>
+<script type="module" src="./src/bootstrap.mjs" onerror="if(location.protocol!=='file:')showStartupError('启动文件加载失败，请刷新页面；本地使用请双击“启动工具.cmd”。')"></script>
+</body>
+</html>
