@@ -1,9 +1,9 @@
 import {templates} from './reference-data.mjs';
-export function validAmount(value) {
-  return /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 999999999;
+export function validAmount(value, decimals=false) {
+  return (decimals ? /^\d+(?:\.\d{1,2})?$/ : /^\d+$/).test(value) && Number(value) >= (decimals ? 0.01 : 1) && Number(value) <= 999999999;
 }
 export function amountWords(value) {
-  if (!validAmount(value)) return '';
+  if (!validAmount(value,true)) return '';
   const small=['Zero','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
   const tens=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
   function words(n) {
@@ -13,7 +13,9 @@ export function amountWords(value) {
       if(n>=unit) return words(Math.floor(n/unit))+' '+label+(n%unit?' '+words(n%unit):'');
     }
   }
-  return 'Rupees '+words(Number(value))+' Only';
+  const [whole,fraction='']=value.split('.');
+  const paise=Number(fraction.padEnd(2,'0'));
+  return 'Rupees '+words(Number(whole))+(paise?' and '+words(paise)+' Paise':'')+' Only';
 }
 export function regionChanged(region, values, template) {
   return (region.depends || [region.key]).some(key => values[key] !== template.fields[key]?.value);
@@ -39,7 +41,10 @@ export function regionText(region, values) {
       return `${today?'Today':`${Number(day)} ${mon} ${year}`}, ${hr}:${minute} ${suffix}`;
     }
   }
-  if(region.grouping && validAmount(text)) text=new Intl.NumberFormat('en-IN').format(Number(text));
+  if(region.grouping && validAmount(text,region.decimals)){
+    const [whole,fraction]=text.split('.');
+    text=String(Number(whole)).replace(/\B(?=(\d{3})+(?!\d))/g,',')+(fraction===undefined?'':'.'+fraction);
+  }
   return (region.prefix||'')+text+(region.suffix||'');
 }
 
@@ -99,7 +104,7 @@ function fitText(ctx,text,region) {
   // Shrink inside the original text box; never resize or extend the screen.
   for(;size>=6;size-=0.25) {
     ctx.font=`${region.italic ? "italic " : ""}${region.weight} ${size}px ReferenceRoboto, Arial, sans-serif`;
-    const lastWidth=region.badge?region.w-region.badge.w-8:region.lastLineWidth;
+    const lastWidth=region.icon?region.w-region.icon.w-region.gap:region.badge?region.w-region.badge.w-8:region.lastLineWidth;
     lines=wrapLines(ctx,text,region.w,region.maxLines||1,lastWidth);
     ascent=Math.max(...lines.map(line=>ctx.measureText(line).actualBoundingBoxAscent));
     descent=Math.max(...lines.map(line=>ctx.measureText(line).actualBoundingBoxDescent));
@@ -162,8 +167,19 @@ export async function renderReference(canvas,template,values,isCurrent=()=>true)
       ctx.fillStyle=colors[index];ctx.textBaseline='alphabetic';ctx.textAlign=region.align;
       const lineHeight=size*region.lineHeight;
       const firstY=region.y+(region.textTop??(region.maxLines>1?2:(region.h-ascent-descent)/2))+ascent;
-      const x=region.align==='center'?region.x+region.w/2:region.align==='right'?region.x+region.w:region.x;
+      const textWidth=ctx.measureText(lines[0]).width;
+      const groupWidth=textWidth+(region.icon?region.icon.w+region.gap:0);
+      const groupX=region.align==='center'?region.x+(region.w-groupWidth)/2:region.align==='right'?region.x+region.w-groupWidth:region.x;
+      const x=region.icon?groupX:region.align==='center'?region.x+region.w/2:region.align==='right'?region.x+region.w:region.x;
+      if(region.icon)ctx.textAlign='left';
       lines.forEach((line,i)=>ctx.fillText(line,x,firstY+i*lineHeight));
+      if(region.icon){
+        const icon=region.icon;
+        // Align to the visible digits, excluding the comma's descender.
+        const digits=ctx.measureText(text.replace(/[^0-9]/g,''));
+        const iconY=firstY+(digits.actualBoundingBoxDescent-digits.actualBoundingBoxAscent)/2-icon.h/2;
+        ctx.drawImage(source,icon.x,icon.y,icon.w,icon.h,groupX+textWidth+region.gap,iconY,icon.w,icon.h);
+      }
       if(region.badge){const badge=region.badge;const bx=x+ctx.measureText(lines.at(-1)).width+8;const by=Math.max(region.y,firstY+(lines.length-1)*lineHeight-ascent/2-badge.h/2);ctx.drawImage(source,badge.x,badge.y,badge.w,badge.h,bx,by,badge.w,badge.h);}
       for(const keep of region.preserve||[]) ctx.drawImage(source,keep.x,keep.y,keep.w,keep.h,keep.x,keep.y,keep.w,keep.h);
       if(region.toast){const toast=region.toast;ctx.fillStyle='rgba(45,50,57,.70)';ctx.beginPath();ctx.roundRect(toast.x,toast.y,toast.w,toast.h,12);ctx.fill();ctx.font='400 20px ReferenceRoboto';ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('Call ended',toast.x+toast.w/2,toast.y+toast.h/2);}

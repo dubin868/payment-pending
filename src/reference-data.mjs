@@ -74,3 +74,24 @@ for(const template of templates){
   if(template.id==='freecharge-details'||template.id==='freecharge-lite') template.fields.senderBank.label='付款账号（掩码及尾号）';
   if(template.id==='mobikwik-overview'||template.id==='mobikwik-details') Object.assign(template.regions.find(region=>region.key==='time'),{weight:700,italic:true});
 }
+
+// Amount rows include the original icon and available horizontal space.
+const amountRows = {
+  'paytm-process-white': {x:42,w:492,align:'center',icon:{x:305,y:332,w:44,h:44},gap:12},
+  'paytm-process-gray': {x:43,w:475,align:'center',icon:{x:299,y:378,w:51,h:51},gap:13},
+  'paytm-summary': {w:480,icon:{x:182,y:223,w:48,h:48},gap:12},
+  'paytm-summary-compact': {w:492,icon:{x:192,y:207,w:43,h:43},gap:12},
+  'mobikwik-overview': {w:492,icon:{x:242,y:160,w:43,h:43},gap:12},
+  'mobikwik-details': {w:230,icon:{x:211,y:96,w:26,h:26},gap:9},
+  'mobikwik-blue': {x:36,w:502}
+};
+for(const template of templates){
+  if(!['paytm','mobikwik'].includes(template.provider))continue;
+  if(template.fields.amount)template.fields.amount.decimals=true;
+  for(const region of template.regions.filter(r=>r.key==='amount')){
+    region.decimals=true;
+    if(region.format==='words')continue;
+    region.grouping=true;
+    Object.assign(region,amountRows[template.id]);
+  }
+}

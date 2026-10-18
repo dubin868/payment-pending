@@ -13,7 +13,7 @@ function validate(template,values){
   for(const [key,field] of Object.entries(template.fields)){
     const value=values[key];
     if(typeof value!=='string') return field.label+'的格式不正确';
-    if(field.type==='amount'&&!validAmount(value))return '金额必须为 1 至 999,999,999 之间的整数';
+    if(field.type==='amount'&&!validAmount(value,field.decimals))return field.decimals?'金额必须为 0.01 至 999,999,999，最多两位小数':'金额必须为 1 至 999,999,999 之间的整数';
     if(field.type==='battery'&&(!/^\d{1,3}$/.test(value)||Number(value)>100))return '电池电量必须为 0 至 100 之间的整数';
     if(field.type==='datetime-local'&&(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)||Number.isNaN(new Date(value).getTime())))return '请填写有效的交易日期与时间';
     if(field.type==='image'&&value&&!value.startsWith('data:image/'))return '头像或图标的格式不正确';
@@ -35,7 +35,7 @@ function createEditor(){
       input.addEventListener('change',async()=>{const file=input.files?.[0],id=current.id;if(!file)return;if(!file.type.startsWith('image/')||file.size>10*1024*1024){announce('请选择不超过 10 MB 的图片',true);input.value='';return;}try{const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=reject;reader.readAsDataURL(file);});if(!input.isConnected||current.id!==id||input.files?.[0]!==file)return;states[id][key]=data;queueRender();}catch{announce('图片读取失败，请重新选择',true);}});
     } else {
       if(input.tagName==='INPUT')input.type=field.type==='amount'||field.type==='battery'?'number':field.type==='datetime-local'?'datetime-local':'text';input.value=states[current.id][key];input.maxLength=320;
-      if(input.type==='number'){input.min=field.type==='amount'?'1':'0';input.max=field.type==='amount'?'999999999':'100';input.step='1';input.required=true;}
+      if(input.type==='number'){input.min=field.type==='amount'?(field.decimals?'0.01':'1'):'0';input.max=field.type==='amount'?'999999999':'100';input.step=field.decimals?'0.01':'1';input.required=true;}
       if(input.type==='datetime-local')input.required=true;
       if(['started','transferred','depositing'].includes(key))input.placeholder='留空时随姓名和银行信息自动生成';
       if(current.id==='paytm-process-gray'&&key==='transaction')input.placeholder='原图被遮挡；填写完整编号后替换';
